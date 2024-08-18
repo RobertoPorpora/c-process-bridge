@@ -12,6 +12,11 @@ const char *NEWLINE = "\r\n";
 const char *NEWLINE = "\n";
 #endif
 
+void clear_string(char *string)
+{
+    string[0] = 0;
+}
+
 // -----------------------------------------------------------------------------
 // Create / Destroy functions
 // -----------------------------------------------------------------------------
@@ -35,7 +40,7 @@ PB_process_t *PB_create(PB_type_t type)
         setvbuf(stdin, NULL, _IONBF, 0);
         setvbuf(stdout, NULL, _IONBF, 0);
         setvbuf(stderr, NULL, _IONBF, 0);
-        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "");
+        clear_string(process->error);
         process->status = PB_STATUS_OK;
         break;
     default:
@@ -152,12 +157,12 @@ static PB_status_t send_to_parent(PB_process_t *process, const char *message, bo
 
     if (result < 0)
     {
-        snprintf(process->error, PB_STRING_SIZE_DEFAULT, strerror(errno));
+        strncpy(process->error, strerror(errno), PB_STRING_SIZE_DEFAULT);
         process->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
     }
 
-    snprintf(process->error, PB_STRING_SIZE_DEFAULT, "");
+    clear_string(process->error);
     process->status = PB_STATUS_OK;
     return PB_STATUS_OK;
 }
@@ -239,7 +244,7 @@ PB_status_t receive_from_parent(PB_process_t *process, char *mailbox, size_t siz
         }
         else if (ferror(stdin))
         {
-            snprintf(process->error, PB_STRING_SIZE_DEFAULT, strerror(errno));
+            strncpy(process->error, strerror(errno), PB_STRING_SIZE_DEFAULT);
         }
         else
         {
@@ -263,7 +268,7 @@ PB_status_t receive_from_parent(PB_process_t *process, char *mailbox, size_t siz
         }
     }
 
-    snprintf(process->error, PB_STRING_SIZE_DEFAULT, "");
+    clear_string(process->error);
     process->status = PB_STATUS_OK;
     return PB_STATUS_OK;
 }
