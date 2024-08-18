@@ -1,0 +1,24 @@
+# Python
+__pycache__/
+*.egg-info/
+.venv/
+.env/
+
+# C, CMake
+build/
+dist/
+bin/
+
+# Node.js
+node_modules/
+*.tsbuildinfo
+
+# Rust
+target/
+
+# General
+.DS_Store
+logs/
+tmp/
+.idea/
+.vscode/
