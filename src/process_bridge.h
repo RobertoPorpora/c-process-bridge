@@ -8,7 +8,7 @@
 // Types
 // -----------------------------------------------------------------------------
 
-#define PB_DEFAULT_BUFSIZE 200
+#define PB_STRING_SIZE_DEFAULT 200
 
 typedef enum
 {
@@ -32,7 +32,7 @@ typedef struct PB_process_t
 {
     PB_type_t type;
     PB_status_t status;
-    char error[PB_DEFAULT_BUFSIZE];
+    char error[PB_STRING_SIZE_DEFAULT];
     PB_return_t return_code;
 } PB_process_t;
 

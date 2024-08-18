@@ -29,18 +29,18 @@ PB_process_t *PB_create(PB_type_t type)
     {
     case PB_TYPE_CHILD:
         process->status = PB_STATUS_NOT_SPAWNED;
-        snprintf(process->error, "Child not spawned", PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Child not spawned");
         break;
     case PB_TYPE_PARENT:
         setvbuf(stdin, NULL, _IONBF, 0);
         setvbuf(stdout, NULL, _IONBF, 0);
         setvbuf(stderr, NULL, _IONBF, 0);
-        snprintf(process->error, "", PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "");
         process->status = PB_STATUS_OK;
         break;
     default:
         process->status = PB_STATUS_USAGE_ERROR;
-        snprintf(process->error, "Unsupported process type.", PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Unsupported process type.");
         break;
     }
 
@@ -61,21 +61,21 @@ void PB_destroy(PB_process_t *process)
 
 PB_status_t PB_spawn(PB_process_t *child, const char *command)
 {
-    snprintf(child->error, "Not implemented.", PB_DEFAULT_BUFSIZE);
+    snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Not implemented.");
     child->status = PB_STATUS_GENERIC_ERROR;
     return PB_STATUS_GENERIC_ERROR;
 }
 
 PB_status_t PB_despawn(PB_process_t *child)
 {
-    snprintf(child->error, "Not implemented.", PB_DEFAULT_BUFSIZE);
+    snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Not implemented.");
     child->status = PB_STATUS_GENERIC_ERROR;
     return PB_STATUS_GENERIC_ERROR;
 }
 
 PB_status_t PB_wait(PB_process_t *child)
 {
-    snprintf(child->error, "Not implemented.", PB_DEFAULT_BUFSIZE);
+    snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Not implemented.");
     child->status = PB_STATUS_GENERIC_ERROR;
     return PB_STATUS_GENERIC_ERROR;
 }
@@ -118,7 +118,7 @@ static PB_status_t send_dispatcher(PB_process_t *process, const char *message, b
         return send_to_child(process, message);
         break;
     default:
-        snprintf(process->error, "Not implemented.", PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Not implemented.");
         process->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
         break;
@@ -135,7 +135,7 @@ static PB_status_t send_to_parent(PB_process_t *process, const char *message, bo
 
     if (message == NULL)
     {
-        snprintf(process->error, "Message argument is NULL", PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Message argument is NULL");
         process->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
     }
@@ -152,12 +152,12 @@ static PB_status_t send_to_parent(PB_process_t *process, const char *message, bo
 
     if (result < 0)
     {
-        snprintf(process->error, strerror(errno), PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, strerror(errno));
         process->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
     }
 
-    snprintf(process->error, "", PB_DEFAULT_BUFSIZE);
+    snprintf(process->error, PB_STRING_SIZE_DEFAULT, "");
     process->status = PB_STATUS_OK;
     return PB_STATUS_OK;
 }
@@ -168,17 +168,17 @@ static PB_status_t send_to_child(PB_process_t *process, const char *message)
     {
         return PB_STATUS_USAGE_ERROR;
     }
-    snprintf(process->error, "Not implemented.", PB_DEFAULT_BUFSIZE);
+    snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Not implemented.");
     process->status = PB_STATUS_GENERIC_ERROR;
     return PB_STATUS_GENERIC_ERROR;
 }
 
 //------------------------------------------------------------------------------
 
-static PB_status_t receive_dispatcher(PB_process_t *process, const char *message, bool is_err);
+static PB_status_t receive_dispatcher(PB_process_t *process, char *message, size_t size, bool is_err);
 
-static PB_status_t receive_from_parent(PB_process_t *process, const char *message);
-static PB_status_t receive_from_child(PB_process_t *process, const char *message, bool is_err);
+static PB_status_t receive_from_parent(PB_process_t *process, char *message, size_t size);
+static PB_status_t receive_from_child(PB_process_t *process, char *message, size_t size, bool is_err);
 
 //------------------------------------------------------------------------------
 
@@ -209,7 +209,7 @@ static PB_status_t receive_dispatcher(PB_process_t *process, char *mailbox, size
         return receive_from_child(process, mailbox, size, is_err);
         break;
     default:
-        snprintf(process->error, "Not implemented.", PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Not implemented.");
         process->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
         break;
@@ -226,7 +226,7 @@ PB_status_t receive_from_parent(PB_process_t *process, char *mailbox, size_t siz
 
     if (mailbox == NULL)
     {
-        snprintf(process->error, "Mailbox argument is NULL", PB_DEFAULT_BUFSIZE);
+        snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Mailbox argument is NULL");
         process->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
     }
@@ -235,15 +235,15 @@ PB_status_t receive_from_parent(PB_process_t *process, char *mailbox, size_t siz
     {
         if (feof(stdin))
         {
-            snprintf(process->error, "End of file reached", PB_DEFAULT_BUFSIZE);
+            snprintf(process->error, PB_STRING_SIZE_DEFAULT, "End of file reached");
         }
         else if (ferror(stdin))
         {
-            snprintf(process->error, strerror(errno), PB_DEFAULT_BUFSIZE);
+            snprintf(process->error, PB_STRING_SIZE_DEFAULT, strerror(errno));
         }
         else
         {
-            snprintf(process->error, "Unknown error", PB_DEFAULT_BUFSIZE);
+            snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Unknown error");
         }
         process->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
@@ -263,18 +263,18 @@ PB_status_t receive_from_parent(PB_process_t *process, char *mailbox, size_t siz
         }
     }
 
-    snprintf(process->error, "", PB_DEFAULT_BUFSIZE);
+    snprintf(process->error, PB_STRING_SIZE_DEFAULT, "");
     process->status = PB_STATUS_OK;
     return PB_STATUS_OK;
 }
 
-static PB_status_t receive_from_child(PB_process_t *process, char *mailbox, size_t size)
+static PB_status_t receive_from_child(PB_process_t *process, char *mailbox, size_t size, bool is_err)
 {
     if (process == NULL)
     {
         return PB_STATUS_USAGE_ERROR;
     }
-    snprintf(process->error, "Not implemented.", PB_DEFAULT_BUFSIZE);
+    snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Not implemented.");
     process->status = PB_STATUS_GENERIC_ERROR;
     return PB_STATUS_GENERIC_ERROR;
 }
