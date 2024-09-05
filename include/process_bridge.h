@@ -4,6 +4,12 @@
 #include <stddef.h>
 #include <stdbool.h>
 
+#ifdef _WIN32
+#include <windows.h>
+#else
+#include <fcntl.h>
+#endif
+
 // -----------------------------------------------------------------------------
 // Types
 // -----------------------------------------------------------------------------
@@ -26,7 +32,11 @@ typedef enum
     PB_STATUS_USAGE_ERROR,
 } PB_status_t;
 
+#ifdef _WIN32
+typedef DWORD PB_return_t;
+#else
 typedef uint8_t PB_return_t;
+#endif
 
 typedef struct PB_process_t
 {
@@ -34,6 +44,20 @@ typedef struct PB_process_t
     PB_status_t status;
     char error[PB_STRING_SIZE_DEFAULT];
     PB_return_t return_code;
+#ifdef _WIN32
+    HANDLE process_h;
+    HANDLE stdin_h;
+    FILE *stdin_f;
+    HANDLE *stdout_h;
+    FILE *stdout_f;
+    HANDLE *stderr_h;
+    FILE *stderr_f;
+#else
+    pid_t pid;
+    int stdin_fd;
+    int stdout_fd;
+    int stderr_fd;
+#endif
 } PB_process_t;
 
 // -----------------------------------------------------------------------------
@@ -59,3 +83,9 @@ PB_status_t PB_send(PB_process_t *, const char *message);
 PB_status_t PB_send_err(PB_process_t *, const char *message);
 PB_status_t PB_receive(PB_process_t *, char *mailbox, size_t);
 PB_status_t PB_receive_err(PB_process_t *, char *mailbox, size_t);
+
+// -----------------------------------------------------------------------------
+// Errors management
+// -----------------------------------------------------------------------------
+
+void PB_clear_error(PB_process_t *);
