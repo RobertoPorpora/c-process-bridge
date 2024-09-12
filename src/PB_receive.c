@@ -101,11 +101,11 @@ static PB_status_t receive_from_child(PB_process_t *process, char mailbox[PB_STR
     HANDLE handle;
     if (is_err)
     {
-        handle = (HANDLE)_get_osfhandle(_fileno(process->stderr_f));
+        handle = process->stderr_h;
     }
     else
     {
-        handle = (HANDLE)_get_osfhandle(_fileno(process->stdout_f));
+        handle = process->stdout_h;
     }
 
     while (true)
@@ -114,7 +114,7 @@ static PB_status_t receive_from_child(PB_process_t *process, char mailbox[PB_STR
         BOOL result = ReadFile(handle, buf, 1, &bytes_read, NULL);
         if (!result)
         {
-            // DWORD error = GetLastError();
+            DWORD error = GetLastError();
             snprintf(process->error, PB_STRING_SIZE_DEFAULT, "Error while reading from child's %s.", is_err ? "stderr" : "stdout");
             process->status = PB_STATUS_GENERIC_ERROR;
             return PB_STATUS_GENERIC_ERROR;

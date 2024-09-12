@@ -65,10 +65,14 @@ static PB_status_t send_to_parent(PB_process_t *process, const char *message, bo
         return PB_STATUS_GENERIC_ERROR;
     }
 
+    char *output = PB_string_clone_with_newline(message, strlen(message));
+
     if (is_err)
     {
-        if (fprintf(stderr, "%s%s", message, NEWLINE))
+        if (fputs(output, stderr) < 0)
         {
+            if (output)
+                free(output);
             strncpy(process->error, "Could not print to stderr", PB_STRING_SIZE_DEFAULT);
             process->status = PB_STATUS_GENERIC_ERROR;
             return PB_STATUS_GENERIC_ERROR;
@@ -76,13 +80,18 @@ static PB_status_t send_to_parent(PB_process_t *process, const char *message, bo
     }
     else
     {
-        if (fprintf(stdout, "%s%s", message, NEWLINE))
+        if (fputs(output, stdout) < 0)
         {
+            if (output)
+                free(output);
             strncpy(process->error, "Could not print to stdout", PB_STRING_SIZE_DEFAULT);
             process->status = PB_STATUS_GENERIC_ERROR;
             return PB_STATUS_GENERIC_ERROR;
         }
     }
+
+    if (output)
+        free(output);
 
     return PB_STATUS_OK;
 }
@@ -117,26 +126,22 @@ static PB_status_t send_to_child(PB_process_t *process, const char *message)
         return PB_STATUS_GENERIC_ERROR;
     }
 
-    fputs(msg_copy, process->stdin_f);
-    fflush(process->stdin_f);
+    DWORD bytes_written = 0;
+    if (!WriteFile(process->stdin_h, msg_copy, (DWORD)strlen(msg_copy), &bytes_written, NULL))
+    {
+        free(msg_copy);
+        strncpy(process->error, "Couldn't write to child's stdin", PB_STRING_SIZE_DEFAULT);
+        process->status = PB_STATUS_GENERIC_ERROR;
+        return PB_STATUS_GENERIC_ERROR;
+    }
 
-    // DWORD bytes_written = 0;
-    // HANDLE handle = (HANDLE)_get_osfhandle(_fileno(process->stdin_f));
-    // if (!WriteFile(handle, msg_copy, (DWORD)strlen(msg_copy), &bytes_written, NULL))
-    // {
-    //     free(msg_copy);
-    //     strncpy(process->error, "Couldn't write to child's stdin", PB_STRING_SIZE_DEFAULT);
-    //     process->status = PB_STATUS_GENERIC_ERROR;
-    //     return PB_STATUS_GENERIC_ERROR;
-    // }
-
-    // if (!FlushFileBuffers(handle))
-    // {
-    //     free(msg_copy);
-    //     strncpy(process->error, "Couldn't flush child's stdin", PB_STRING_SIZE_DEFAULT);
-    //     process->status = PB_STATUS_GENERIC_ERROR;
-    //     return PB_STATUS_GENERIC_ERROR;
-    // }
+    if (!FlushFileBuffers(process->stdin_h))
+    {
+        free(msg_copy);
+        strncpy(process->error, "Couldn't flush child's stdin", PB_STRING_SIZE_DEFAULT);
+        process->status = PB_STATUS_GENERIC_ERROR;
+        return PB_STATUS_GENERIC_ERROR;
+    }
 
     free(msg_copy);
     return PB_STATUS_OK;

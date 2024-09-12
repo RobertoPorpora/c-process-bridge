@@ -13,6 +13,7 @@ PB_process_t *PB_create(PB_type_t type)
         return NULL;
     }
     process->type = type;
+    process->return_code = PB_DEFAULT_RETURN;
 
     switch (type)
     {
@@ -46,89 +47,60 @@ void PB_destroy(PB_process_t *process)
 
 #ifdef _WIN32
 
-#include <Windows.h>
-#include <io.h>
-#include <fcntl.h>
+#include <windows.h>
 
 PB_status_t PB_spawn(PB_process_t *child, const char *command)
 {
-    // Process creation setup
     STARTUPINFOA startInfo;
-    PROCESS_INFORMATION processInfo;
     memset(&startInfo, 0, sizeof(startInfo));
     startInfo.cb = sizeof(startInfo);
     startInfo.dwFlags = STARTF_USESTDHANDLES;
 
+    PROCESS_INFORMATION processInfo;
     memset(&processInfo, 0, sizeof(processInfo));
 
-    // Setup pipes
+    HANDLE read_h = NULL;
+    HANDLE write_h = NULL;
+    SECURITY_ATTRIBUTES security_attributes;
+    security_attributes.bInheritHandle = TRUE;
+    security_attributes.lpSecurityDescriptor = NULL;
+    security_attributes.nLength = sizeof(security_attributes);
 
-    int fd;
-    HANDLE rd, wr;
+    // Create pipe for stdin
+    if (!CreatePipe(&read_h, &write_h, &security_attributes, 0))
+    {
+        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while creating child's stdin pipe. Error code: %lu", GetLastError());
+        child->status = PB_STATUS_GENERIC_ERROR;
+        return PB_STATUS_GENERIC_ERROR;
+    }
+    startInfo.hStdInput = read_h;
+    child->stdin_h = write_h;
 
-    if (!CreatePipe(&rd, &wr, NULL, 0))
+    // Create pipe for stdout
+    if (!CreatePipe(&read_h, &write_h, &security_attributes, 0))
     {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while creating child's stdin / stdout pipe.");
+        CloseHandle(startInfo.hStdInput);
+        CloseHandle(child->stdin_h);
+        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while creating child's stdout pipe. Error code: %lu", GetLastError());
         child->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
     }
+    child->stdout_h = read_h;
+    startInfo.hStdOutput = write_h;
 
-    // Setup child's stdin
-    fd = _open_osfhandle((intptr_t)wr, 0);
-    if (-1 == fd)
+    // Create pipe for stderr
+    if (!CreatePipe(&read_h, &write_h, &security_attributes, 0))
     {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while opening child's stdin handle.");
+        CloseHandle(startInfo.hStdInput);
+        CloseHandle(child->stdin_h);
+        CloseHandle(startInfo.hStdOutput);
+        CloseHandle(child->stdout_h);
+        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while creating child's stderr pipe. Error code: %lu", GetLastError());
         child->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
     }
-    child->stdin_f = _fdopen(fd, "wb");
-    if (NULL == child->stdin_f)
-    {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while opening child's stdin file.");
-        child->status = PB_STATUS_GENERIC_ERROR;
-        return PB_STATUS_GENERIC_ERROR;
-    }
-    startInfo.hStdInput = rd;
-
-    // Setup child's stdout
-    fd = _open_osfhandle((intptr_t)rd, 0);
-    if (-1 == fd)
-    {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while opening child's stdout handle.");
-        child->status = PB_STATUS_GENERIC_ERROR;
-        return PB_STATUS_GENERIC_ERROR;
-    }
-    child->stdout_f = _fdopen(fd, "rb");
-    if (NULL == child->stdout_f)
-    {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while opening child's stdout file.");
-        child->status = PB_STATUS_GENERIC_ERROR;
-        return PB_STATUS_GENERIC_ERROR;
-    }
-    startInfo.hStdOutput = wr;
-
-    // Setup child's stderr
-    if (!CreatePipe(&rd, &wr, NULL, 0))
-    {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while creating child's stderr pipe.");
-        child->status = PB_STATUS_GENERIC_ERROR;
-        return PB_STATUS_GENERIC_ERROR;
-    }
-    fd = _open_osfhandle((intptr_t)rd, 0);
-    if (-1 == fd)
-    {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while opening child's stdout handle.");
-        child->status = PB_STATUS_GENERIC_ERROR;
-        return PB_STATUS_GENERIC_ERROR;
-    }
-    child->stderr_f = _fdopen(fd, "rb");
-    if (NULL == child->stderr_f)
-    {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while opening child's stderr file.");
-        child->status = PB_STATUS_GENERIC_ERROR;
-        return PB_STATUS_GENERIC_ERROR;
-    }
-    startInfo.hStdError = wr;
+    child->stderr_h = read_h;
+    startInfo.hStdError = write_h;
 
     // Spawn command
     if (!CreateProcessA(
@@ -144,24 +116,25 @@ PB_status_t PB_spawn(PB_process_t *child, const char *command)
             &processInfo    // lpProcessInformation
             ))
     {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while creating process.");
+        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while creating process. Error code: %lu", GetLastError());
+        CloseHandle(startInfo.hStdInput);
+        CloseHandle(child->stdin_h);
+        CloseHandle(startInfo.hStdOutput);
+        CloseHandle(child->stdout_h);
+        CloseHandle(startInfo.hStdError);
+        CloseHandle(child->stderr_h);
         child->status = PB_STATUS_GENERIC_ERROR;
         return PB_STATUS_GENERIC_ERROR;
     }
 
+    // Store process handle and close unused handles
     child->process_h = processInfo.hProcess;
-    child->stdin_h = startInfo.hStdInput;
+    CloseHandle(processInfo.hThread);
 
-    // CloseHandle(processInfo.hThread);
-
-    if (NULL != startInfo.hStdOutput)
-    {
-        CloseHandle(startInfo.hStdOutput);
-    }
-    if (NULL != startInfo.hStdError)
-    {
-        CloseHandle(startInfo.hStdError);
-    }
+    // Close handles that are not needed in the parent process
+    CloseHandle(startInfo.hStdInput);
+    CloseHandle(startInfo.hStdOutput);
+    CloseHandle(startInfo.hStdError);
 
     PB_clear_string(child->error);
     child->status = PB_STATUS_OK;
@@ -171,28 +144,14 @@ PB_status_t PB_spawn(PB_process_t *child, const char *command)
 PB_status_t PB_despawn(PB_process_t *child)
 {
     PB_status_t return_value = PB_STATUS_OK;
-    if (!TerminateProcess(child->process_h, 99))
+    if (!TerminateProcess(child->process_h, PB_DEFAULT_RETURN))
     {
         snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Error while terminating process.");
         child->status = PB_STATUS_GENERIC_ERROR;
         return_value = PB_STATUS_GENERIC_ERROR;
     }
     PB_wait(child);
-    if (child->stdin_f)
-    {
-        fclose(child->stdin_f);
-        child->stdin_f = NULL;
-    }
-    if (child->stdout_f)
-    {
-        fclose(child->stdout_f);
-        child->stdout_f = NULL;
-    }
-    if (child->stderr_f)
-    {
-        fclose(child->stderr_f);
-        child->stderr_f = NULL;
-    }
+
     if (child->process_h)
     {
         CloseHandle(child->process_h);
@@ -211,12 +170,6 @@ PB_status_t PB_wait(PB_process_t *child)
     if (NULL == child)
     {
         return PB_STATUS_USAGE_ERROR;
-    }
-
-    if (child->stdin_f)
-    {
-        fclose(child->stdin_f);
-        child->stdin_f = NULL;
     }
 
     if (child->stdin_h)
@@ -377,9 +330,7 @@ PB_status_t PB_wait(PB_process_t *child)
     }
     else if (WIFSIGNALED(status))
     {
-        snprintf(child->error, PB_STRING_SIZE_DEFAULT, "Process terminated by signal.");
-        child->status = PB_STATUS_GENERIC_ERROR;
-        return PB_STATUS_GENERIC_ERROR;
+        child->return_code = PB_DEFAULT_RETURN;
     }
     else
     {

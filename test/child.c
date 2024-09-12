@@ -24,11 +24,11 @@ int main()
     char buf[PB_STRING_SIZE_DEFAULT];
 
     strcpy(buf, "c1 ");
-    PB_receive(parent, &buf[strlen(buf)], 50);
+    PB_receive(parent, &(buf[strlen(buf)]), 50);
     strcat(buf, " ");
-    PB_receive(parent, &buf[strlen(buf)], 50);
+    PB_receive(parent, &(buf[strlen(buf)]), 50);
     strcat(buf, " ");
-    PB_receive(parent, &buf[strlen(buf)], 50);
+    PB_receive(parent, &(buf[strlen(buf)]), 50);
 
     PB_send(parent, buf);
     PB_send_err(parent, buf);

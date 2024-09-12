@@ -49,20 +49,15 @@ char *PB_string_clone_with_newline(const char *s, size_t n)
 
 void PB_strip_newlines(char *str)
 {
-    size_t len = strlen(str);
-    if (len > 0)
+    size_t i = strlen(str);
+    while (i > 0)
     {
-        if (str[len - 1] == '\n')
+        i--;
+        if (('\r' != str[i]) && ('\n' != str[i]))
         {
-            str[len - 1] = '\0';
+            break;
         }
-        if (len > 1)
-        {
-            if (str[len - 2] == '\r')
-            {
-                str[len - 2] = '\0';
-            }
-        }
+        str[i] = '\0';
     }
 }
 

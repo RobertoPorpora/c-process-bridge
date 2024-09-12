@@ -52,7 +52,7 @@ int main()
         success = false;
     }
 
-    if (child->return_code != 0)
+    if (child->return_code != PB_DEFAULT_RETURN)
     {
         snprintf(buf_out, 50, "ERROR: return code = %d.", child->return_code);
         PB_send(user, buf_out);

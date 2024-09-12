@@ -38,6 +38,8 @@ typedef DWORD PB_return_t;
 typedef uint8_t PB_return_t;
 #endif
 
+static const PB_return_t PB_DEFAULT_RETURN = 0xFF;
+
 typedef struct PB_process_t
 {
     PB_type_t type;
@@ -47,11 +49,8 @@ typedef struct PB_process_t
 #ifdef _WIN32
     HANDLE process_h;
     HANDLE stdin_h;
-    FILE *stdin_f;
-    HANDLE *stdout_h;
-    FILE *stdout_f;
-    HANDLE *stderr_h;
-    FILE *stderr_f;
+    HANDLE stdout_h;
+    HANDLE stderr_h;
 #else
     pid_t pid;
     int stdin_fd;
