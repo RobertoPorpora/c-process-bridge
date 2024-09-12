@@ -9,13 +9,14 @@ Ideal for applications requiring multiple persistent and collaborative processes
 ### Linking the Library
 
 To use the `process_bridge` library in your project, you can use one these methods:
-- Method 1 (CMake):
-  1. Copy the whole folder in your project (or import it as a submodule).
-  2. In your CMakeLists.txt script:
-    - Call the CMakeLists.txt script of this folder.
-    - Link "process_bridge" library.
-- Method 2 (copy):
-  1. Copy the .c and .h files in your sources folder.
+Method 1: CMake (Recommended):
+1. Copy the whole folder in your project (or import it as a submodule).
+2. In your CMakeLists.txt script:
+    - Call the CMakeLists.txt script of this folder with `add_subdirectory()` .
+    - Link "process_bridge" library with `target_link_libraries()`.
+Method 2: File copy:
+1. Copy the .c and .h files from 'src' and 'include' folders in your sources folder.
+2. Configure your toolchain to compile also the imported .c files
 
 ...and then include the header file where you want to use it:
 ```c
@@ -119,15 +120,11 @@ int main()
 }
 ```
 
-## Limitations
-
-Currently, only the child side is implemented.  
-This means that, for the moment you can't use this library to spawn child processes and communicate with them.  
-You can only use this in a child process to communicate with the parent.  
-
 ## Contributing
 
-Contributions are welcome! Please submit pull requests with clear descriptions and ensure that your code passes existing tests. Any improvements, especially in process management or IPC implementation, would be greatly appreciated.
+Contributions are welcome!  
+Please submit pull requests with clear descriptions and ensure that your code passes existing tests.  
+Any improvements would be greatly appreciated.
 
 ## License
 
